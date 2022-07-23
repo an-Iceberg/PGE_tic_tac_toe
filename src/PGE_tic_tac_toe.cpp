@@ -124,6 +124,8 @@ public:
       HandleModeChange();
     }
 
+    HandleRestart();
+
     PaintPlayingField();
     PaintUI();
     PaintSprites();
@@ -145,9 +147,9 @@ private:
     {
       case PvE:
         // Highlight PvP field on hover
-        if (mouse.x > height + 40 && mouse.x < height + 68 && mouse.y > 5 && mouse.y < 20)
+        if (mouse.x > height + 40 && mouse.x < height + 68 && mouse.y > 5 && mouse.y < 19)
         {
-          FillRect(height + 40, 6, 28, 14, olc::DARK_MAGENTA);
+          FillRect(height + 40, 6, 28, 13, olc::DARK_MAGENTA);
 
           // Switch to the mode clicked on
           if (GetMouse(0).bPressed)
@@ -166,9 +168,9 @@ private:
 
       case PvP:
         // Highlight PvE field on hover
-        if (mouse.x > height + 11 && mouse.x < height + 39 && mouse.y > 5 && mouse.y < 20)
+        if (mouse.x > height + 11 && mouse.x < height + 39 && mouse.y > 5 && mouse.y < 19)
         {
-          FillRect(height + 11, 6, 28, 14, olc::DARK_MAGENTA);
+          FillRect(height + 11, 6, 28, 13, olc::DARK_MAGENTA);
 
           // Switch to the mode clicked on
           if (GetMouse(0).bPressed)
@@ -187,6 +189,23 @@ private:
     }
   }
 
+  // User can restart the game by hitting the restart button
+  void HandleRestart()
+  {
+    if (mouse.x > height + 10 && mouse.y > 30 && mouse.x < (height + 10) + 57 && mouse.y < 30 + 14)
+    {
+      FillRect(height + 11, 31, 56, 13, olc::DARK_MAGENTA);
+
+      if (GetMouse(0).bPressed)
+      {
+        for (cell& cell : cells)
+        {
+          cell.content = NOT_SET;
+        }
+      }
+    }
+  }
+
   void PaintPlayingField()
   {
     // Dawing the playing field
@@ -200,24 +219,26 @@ private:
   void PaintUI()
   {
     // Drawing mode switcher (mode switcher is always present)
-    DrawRect(height + 10, 5, width - (height + 20), 15, olc::GREY);
-    DrawLine(width - ((width - height) / 2), 6, width - ((width - height) / 2), 19, olc::GREY);
+    DrawRect(height + 10, 5, width - (height + 20), 14, olc::GREY);
+    DrawLine(width - ((width - height) / 2), 6, width - ((width - height) / 2), 18, olc::GREY);
 
     switch (mode)
     {
       case PvE:
-        FillRect(height + 11, 6, 28, 14, olc::DARK_CYAN);
+        FillRect(height + 11, 6, 28, 13, olc::DARK_CYAN);
       break;
 
       case PvP:
-        FillRect(height + 40, 6, 28, 14, olc::DARK_CYAN);
+        FillRect(height + 40, 6, 28, 13, olc::DARK_CYAN);
       break;
     }
 
     DrawStringProp(height + 14, 9, "PvE", (mode == PvE ? olc::WHITE : olc::GREY));
     DrawStringProp(height + 43, 9, "PvP", (mode == PvP ? olc::WHITE : olc::GREY));
 
-    // TODO: add reset button
+    // Restart button
+    DrawRect(height + 10, 30, 57, 14, olc::GREY);
+    DrawStringProp(height + 14, 34, "Restart", olc::GREY);
 
     // All other UI elements depend on the mode selected
     switch (mode)
