@@ -16,20 +16,9 @@ enum playMode
 
 struct cell
 {
+  olc::vi2d cellPosition;
   olc::vi2d spritePosition;
   cellContent content;
-
-  cell()
-  {
-    this->spritePosition = olc::vi2d{0, 0};
-    content = cellContent{NOT_SET};
-  }
-
-  cell(olc::vi2d position, cellContent content)
-  {
-    this->spritePosition = position;
-    this->content = content;
-  }
 };
 
 class PGE_tic_tac_toe : public olc::PixelGameEngine
@@ -39,16 +28,18 @@ private:
   olc::Sprite *circle;
   olc::Sprite *crossHover;
   olc::Sprite *circleHover;
+  olc::vi2d mouse;
   int width;
   int height;
   int oneThird; // The distance for one third of the grid or the position of the second cell from the top left of the grid
   int twoThirds;
   int offset; // This makes the cross and circle centered
+  int distances[3];
   cellContent player1Sprite;
   cellContent player2Sprite;
   playMode mode;
   bool playerNeedsToChooseSprite;
-  olc::vi2d mouse;
+  bool quit = false;
   cell cells [9];
 
   olc::Pixel orange = olc::Pixel(255, 128, 0);
@@ -70,6 +61,7 @@ public:
 
     oneThird = height * 0.33;
     twoThirds = oneThird * 2;
+    twoThirds++;
 
     // Calculating the offset by modifying the above formula to x = (y - 94) / 6
     offset = (height + 1 - 94) / 6;
@@ -83,23 +75,31 @@ public:
     cells[0].spritePosition = olc::vi2d{offset, offset};
     cells[1].spritePosition = olc::vi2d{oneThird + 1 + offset, offset};
     cells[2].spritePosition = olc::vi2d{twoThirds + 2 + offset, offset};
-
     cells[3].spritePosition = olc::vi2d{offset, oneThird + 1 + offset};
     cells[4].spritePosition = olc::vi2d{oneThird + 1 + offset, oneThird + 1 + offset};
     cells[5].spritePosition = olc::vi2d{twoThirds + 2 + offset, oneThird + 1 + offset};
-
     cells[6].spritePosition = olc::vi2d{offset, twoThirds + 2 + offset};
     cells[7].spritePosition = olc::vi2d{oneThird + 1 + offset, twoThirds + 2 + offset};
     cells[8].spritePosition = olc::vi2d{twoThirds + 2 + offset, twoThirds + 2 + offset};
+
+    cells[0].cellPosition = olc::vi2d{0, 0};
+    cells[1].cellPosition = olc::vi2d{oneThird + 1, 0};
+    cells[2].cellPosition = olc::vi2d{twoThirds + 1, 0};
+    cells[3].cellPosition = olc::vi2d{0, oneThird + 1};
+    cells[4].cellPosition = olc::vi2d{oneThird + 1, oneThird + 1};
+    cells[5].cellPosition = olc::vi2d{twoThirds + 1, oneThird + 1};
+    cells[6].cellPosition = olc::vi2d{0, twoThirds + 1};
+    cells[7].cellPosition = olc::vi2d{oneThird + 1, twoThirds + 1};
+    cells[8].cellPosition = olc::vi2d{twoThirds + 1, twoThirds + 1};
 
     for (cell& cell : cells)
     {
       cell.content = NOT_SET;
     }
 
-    cells[2].content = CROSS;
-    cells[4].content = CIRCLE;
-    cells[8].content = CROSS;
+    // cells[2].content = CROSS; // dbg
+    // cells[4].content = CIRCLE; // dbg
+    // cells[8].content = CROSS; // dbg
 
     Clear(olc::VERY_DARK_CYAN);
 
@@ -107,13 +107,18 @@ public:
 
     mode = PvE;
 
-    playerNeedsToChooseSprite = false;
+    playerNeedsToChooseSprite = true;
 
     return true;
   }
 
   bool OnUserUpdate(float fElapsedTime) override
   {
+    // if (player1Sprite == NOT_SET || player2Sprite == NOT_SET)
+    // {
+    //   playerNeedsToChooseSprite = true;
+    // }
+
     Clear(olc::VERY_DARK_CYAN);
 
     mouse = {GetMouseX(), GetMouseY()};
@@ -122,9 +127,10 @@ public:
     if (!playerNeedsToChooseSprite)
     {
       HandleModeChange();
+      HandleRestart();
+      HandleGridCellHover();
+      HandleQuit();
     }
-
-    HandleRestart();
 
     PaintPlayingField();
     PaintUI();
@@ -136,7 +142,7 @@ public:
       PaintSpriteChoice();
     }
 
-    return true;
+    return !quit;
   }
 
 private:
@@ -189,7 +195,7 @@ private:
     }
   }
 
-  // User can restart the game by hitting the restart button
+  // User can restart the game by clicking on the restart button
   void HandleRestart()
   {
     if (mouse.x > height + 10 && mouse.y > 30 && mouse.x < (height + 10) + 57 && mouse.y < 30 + 14)
@@ -202,6 +208,40 @@ private:
         {
           cell.content = NOT_SET;
         }
+
+        playerNeedsToChooseSprite = true;
+      }
+    }
+  }
+
+  // TODO: rename this function
+  void HandleGridCellHover()
+  {
+    for (cell& cell : cells)
+    {
+      if (cell.content == NOT_SET && mouse.x > cell.cellPosition.x && mouse.y > cell.cellPosition.y && mouse.x <= cell.cellPosition.x + oneThird && mouse.y <= cell.cellPosition.y + oneThird)
+      {
+        DrawRect(cell.cellPosition.x + 1, cell.cellPosition.y + 1, oneThird - 1, oneThird - 1, olc::DARK_MAGENTA);
+        DrawRect(cell.cellPosition.x + 2, cell.cellPosition.y + 2, oneThird - 3, oneThird - 3, olc::DARK_MAGENTA);
+
+        if (GetMouse(0).bPressed)
+        {
+          cell.content = player1Sprite;
+        }
+      }
+    }
+  }
+
+  // If the player clicks the quit button, the program exist
+  void HandleQuit()
+  {
+    if (mouse.x > height + 10 && mouse.y > height - 17 && mouse.x < (height + 10) + 29 && mouse.y < (height - 17) + 12)
+    {
+      FillRect(height + 11, height - 16, 28, 11, olc::DARK_MAGENTA);
+
+      if (GetMouse(0).bPressed)
+      {
+        quit = true;
       }
     }
   }
@@ -240,6 +280,10 @@ private:
     DrawRect(height + 10, 30, 57, 14, olc::GREY);
     DrawStringProp(height + 14, 34, "Restart", olc::GREY);
 
+    // Quit button
+    DrawRect(height + 10, height - 17, 29, 12, olc::GREY);
+    DrawStringProp(height + 13, height - 14, "Quit", olc::GREY);
+
     // All other UI elements depend on the mode selected
     switch (mode)
     {
@@ -251,8 +295,11 @@ private:
         // TODO: show, who's turn it is
       break;
     }
+
+    // TODO: add quite button
   }
 
+  // Paints the circles and crosses at their respective positions
   void PaintSprites()
   {
     // Drawing the crosses and circles
