@@ -14,6 +14,13 @@ enum playMode
   PvP
 };
 
+enum turn
+{
+  PLAYER_1,
+  PLAYER_2,
+  CPU
+};
+
 struct cell
 {
   olc::vi2d cellPosition;
@@ -29,17 +36,19 @@ private:
   olc::Sprite *crossHover;
   olc::Sprite *circleHover;
   olc::vi2d mouse;
-  int width;
-  int height;
+  int width; // Screen width
+  int height; // Screen height
   int oneThird; // The distance for one third of the grid or the position of the second cell from the top left of the grid
   int twoThirds;
   int offset; // This makes the cross and circle centered
   int distances[3];
   cellContent player1Sprite;
   cellContent player2Sprite;
-  playMode mode;
-  bool playerNeedsToChooseSprite;
+  playMode mode; // Controls the game-mode
+  turn turn; // Controls who's turn it is to place a sprite onto the board
+  bool playerNeedsToChooseSprite; // The player needs to choose a sprite
   bool quit = false;
+  bool winCondition = false;
   cell cells [9];
 
   olc::Pixel orange = olc::Pixel(255, 128, 0);
@@ -97,10 +106,6 @@ public:
       cell.content = NOT_SET;
     }
 
-    // cells[2].content = CROSS; // dbg
-    // cells[4].content = CIRCLE; // dbg
-    // cells[8].content = CROSS; // dbg
-
     Clear(olc::VERY_DARK_CYAN);
 
     player1Sprite = NOT_SET;
@@ -114,29 +119,43 @@ public:
 
   bool OnUserUpdate(float fElapsedTime) override
   {
-    // if (player1Sprite == NOT_SET || player2Sprite == NOT_SET)
-    // {
-    //   playerNeedsToChooseSprite = true;
-    // }
+    if (player1Sprite == NOT_SET || player2Sprite == NOT_SET)
+    {
+      playerNeedsToChooseSprite = true;
+    }
 
     Clear(olc::VERY_DARK_CYAN);
 
     mouse = {GetMouseX(), GetMouseY()};
+
+    if (turn == CPU)
+    {
+      // TODO: implement AI here
+    }
 
     // Only allow user input everywhere if the player does not need to choose a sprite
     if (!playerNeedsToChooseSprite)
     {
       HandleModeChange();
       HandleRestart();
-      HandleGridCellHover();
+
+      // TODO: determine when the win condition is met
+      // Inputs on the playing field are only allowed as long as the game isn't won
+      if (!winCondition)
+      {
+        HandleGridInput();
+      }
+
       HandleQuit();
     }
 
     PaintPlayingField();
-    PaintUI();
+    if (!playerNeedsToChooseSprite)
+    {
+      PaintUI();
+    }
     PaintSprites();
 
-    // TODO: upon switching mode, a pop-up window should appear asking the player (or player 1 to choose their sprite)
     if (playerNeedsToChooseSprite)
     {
       PaintSpriteChoice();
@@ -144,6 +163,10 @@ public:
 
     return !quit;
   }
+
+
+  // ---------------------------
+
 
 private:
   void HandleModeChange()
@@ -215,18 +238,59 @@ private:
   }
 
   // TODO: rename this function
-  void HandleGridCellHover()
+  void HandleGridInput()
   {
     for (cell& cell : cells)
     {
+      // On cell hover
       if (cell.content == NOT_SET && mouse.x > cell.cellPosition.x && mouse.y > cell.cellPosition.y && mouse.x <= cell.cellPosition.x + oneThird && mouse.y <= cell.cellPosition.y + oneThird)
       {
         DrawRect(cell.cellPosition.x + 1, cell.cellPosition.y + 1, oneThird - 1, oneThird - 1, olc::DARK_MAGENTA);
         DrawRect(cell.cellPosition.x + 2, cell.cellPosition.y + 2, oneThird - 3, oneThird - 3, olc::DARK_MAGENTA);
 
+        // FIX: input does not have any action
         if (GetMouse(0).bPressed)
         {
-          cell.content = player1Sprite;
+          // In PvP change player turn after a sprite has been placed
+          switch (mode)
+          {
+            case PvP:
+              // Alternating between the two players
+              switch (turn)
+              {
+                case PLAYER_1:
+                  cell.content = player1Sprite;
+
+                  turn = PLAYER_2;
+                break;
+
+                case PLAYER_2:
+                  cell.content = player2Sprite;
+
+                  turn = PLAYER_1;
+                break;
+
+                case CPU:
+                  turn = PLAYER_1;
+                break;
+              }
+            break;
+
+            case PvE:
+              // Alternating between the player and CPU
+              if (turn != CPU)
+              {
+                cell.content = player1Sprite;
+
+                turn = CPU;
+              }
+              // It's the CPU's turn
+              else
+              {
+                turn = PLAYER_1;
+              }
+            break;
+          }
         }
       }
     }
@@ -235,9 +299,9 @@ private:
   // If the player clicks the quit button, the program exist
   void HandleQuit()
   {
-    if (mouse.x > height + 10 && mouse.y > height - 17 && mouse.x < (height + 10) + 29 && mouse.y < (height - 17) + 12)
+    if (mouse.x > height + 10 && mouse.y > height - 19 && mouse.x < (height + 11) + 30 && mouse.y < (height - 19) + 14)
     {
-      FillRect(height + 11, height - 16, 28, 11, olc::DARK_MAGENTA);
+      FillRect(height + 11, height - 18, 30, 13, olc::DARK_MAGENTA);
 
       if (GetMouse(0).bPressed)
       {
@@ -280,23 +344,55 @@ private:
     DrawRect(height + 10, 30, 57, 14, olc::GREY);
     DrawStringProp(height + 14, 34, "Restart", olc::GREY);
 
-    // Quit button
-    DrawRect(height + 10, height - 17, 29, 12, olc::GREY);
-    DrawStringProp(height + 13, height - 14, "Quit", olc::GREY);
-
     // All other UI elements depend on the mode selected
+    // On the respective player's turn the respective UI element is highlighted
     switch (mode)
     {
       case PvE:
-        // TODO: difficulty selector between easy (random) or hard (pre-calculated play)
+        // Player 1's turn
+        if (turn == PLAYER_1)
+        {
+          DrawRect(height + 10, 55, 56, 14);
+          FillRect(height + 11, 56, 55, 13, olc::DARK_CYAN);
+        }
+        DrawStringProp(height + 14, 59, "Pl. 1", (turn == PLAYER_1 ? olc::WHITE : olc::GREY));
+        DrawStringProp(height + 56, 59, (player1Sprite == CROSS ? "X" : "O"), (turn == PLAYER_1 ? olc::WHITE : olc::GREY));
+
+        // CPU's turn
+        if (turn == CPU)
+        {
+          DrawRect(height + 10, 80, 56, 14);
+          FillRect(height + 11, 81, 55, 13, olc::DARK_CYAN);
+        }
+        DrawStringProp(height + 14, 84, "CPU", (turn == CPU ? olc::WHITE : olc::GREY));
+        DrawStringProp(height + 56, 84, (player1Sprite == CROSS ? "O" : "X"), (turn == CPU ? olc::WHITE : olc::GREY));
       break;
 
       case PvP:
-        // TODO: show, who's turn it is
+        // Player 1's turn
+        if (turn == PLAYER_1)
+        {
+          DrawRect(height + 10, 55, 56, 14);
+          FillRect(height + 11, 56, 55, 13, olc::DARK_CYAN);
+        }
+        DrawStringProp(height + 14, 59, "Pl. 1", (turn == PLAYER_1 ? olc::WHITE : olc::GREY));
+        DrawStringProp(height + 56, 59, (player1Sprite == CROSS ? "X" : "O"), (turn == PLAYER_1 ? olc::WHITE : olc::GREY));
+
+        // Player 2's turn
+        if (turn == PLAYER_2)
+        {
+          DrawRect(height + 10, 80, 56, 14);
+          FillRect(height + 11, 81, 55, 13, olc::DARK_CYAN);
+        }
+        DrawStringProp(height + 14, 84, "Pl. 2", (turn == PLAYER_2 ? olc::WHITE : olc::GREY));
+        DrawStringProp(height + 56, 84, (player2Sprite == CROSS ? "X" : "O"), (turn == PLAYER_2 ? olc::WHITE : olc::GREY));
       break;
     }
 
-    // TODO: add quite button
+    // TODO: adjust padding to be 2px
+    // Quit button
+    DrawRect(height + 10, height - 19, 31, 14, olc::GREY);
+    DrawStringProp(height + 14, height - 15, "Quit", olc::GREY);
   }
 
   // Paints the circles and crosses at their respective positions
@@ -351,11 +447,7 @@ private:
     SetPixelMode(olc::Pixel::NORMAL);
 
     // Hover over circle
-    if (
-      mouse.x > oneThird + spriteOffset &&
-      mouse.y > oneThird + (oneThird / 3) &&
-      mouse.x < (oneThird + spriteOffset) + 32 &&
-      mouse.y < (oneThird + (oneThird / 3)) + 32)
+    if (mouse.x > oneThird + spriteOffset && mouse.y > oneThird + (oneThird / 3) && mouse.x < (oneThird + spriteOffset) + 32 && mouse.y < (oneThird + (oneThird / 3)) + 32)
     {
       SetPixelMode(olc::Pixel::ALPHA);
       DrawSprite(oneThird + spriteOffset, oneThird + (oneThird / 3), circleHover);
@@ -367,16 +459,16 @@ private:
         player1Sprite = CIRCLE;
         player2Sprite = CROSS;
 
+        turn = PLAYER_1;
+
         playerNeedsToChooseSprite = false;
+
+        winCondition = false;
       }
     }
 
     // Hover over cross
-    if (
-      mouse.x > height - spriteOffset &&
-      mouse.y > oneThird + (oneThird / 3) &&
-      mouse.x < (height - spriteOffset) + 32 &&
-      mouse.y < (oneThird + (oneThird / 3)) + 32)
+    if (mouse.x > height - spriteOffset && mouse.y > oneThird + (oneThird / 3) && mouse.x < (height - spriteOffset) + 32 && mouse.y < (oneThird + (oneThird / 3)) + 32)
     {
       SetPixelMode(olc::Pixel::ALPHA);
       DrawSprite(height - spriteOffset, oneThird + (oneThird / 3), crossHover);
@@ -388,7 +480,11 @@ private:
         player1Sprite = CROSS;
         player2Sprite = CIRCLE;
 
+        turn = PLAYER_1;
+
         playerNeedsToChooseSprite = false;
+
+        winCondition = false;
       }
     }
   }
