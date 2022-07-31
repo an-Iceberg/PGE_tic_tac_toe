@@ -119,7 +119,7 @@ public:
 
   bool OnUserUpdate(float fElapsedTime) override
   {
-    if (player1Sprite == NOT_SET || player2Sprite == NOT_SET)
+    if (player1Sprite == NOT_SET or player2Sprite == NOT_SET)
     {
       playerNeedsToChooseSprite = true;
     }
@@ -134,7 +134,7 @@ public:
     }
 
     // Only allow user input everywhere if the player does not need to choose a sprite
-    if (!playerNeedsToChooseSprite)
+    if (not playerNeedsToChooseSprite)
     {
       HandleModeChange();
       HandleRestart();
@@ -150,7 +150,7 @@ public:
     }
 
     PaintPlayingField();
-    if (!playerNeedsToChooseSprite)
+    if (not playerNeedsToChooseSprite)
     {
       PaintUI();
     }
@@ -176,7 +176,7 @@ private:
     {
       case PvE:
         // Highlight PvP field on hover
-        if (mouse.x > height + 40 && mouse.x < height + 68 && mouse.y > 5 && mouse.y < 19)
+        if (mouse.x > height + 40 and mouse.x < height + 68 and mouse.y > 5 and mouse.y < 19)
         {
           FillRect(height + 40, 6, 28, 13, olc::DARK_MAGENTA);
 
@@ -197,7 +197,7 @@ private:
 
       case PvP:
         // Highlight PvE field on hover
-        if (mouse.x > height + 11 && mouse.x < height + 39 && mouse.y > 5 && mouse.y < 19)
+        if (mouse.x > height + 11 and mouse.x < height + 39 and mouse.y > 5 and mouse.y < 19)
         {
           FillRect(height + 11, 6, 28, 13, olc::DARK_MAGENTA);
 
@@ -221,7 +221,7 @@ private:
   // User can restart the game by clicking on the restart button
   void HandleRestart()
   {
-    if (mouse.x > height + 10 && mouse.y > 30 && mouse.x < (height + 10) + 57 && mouse.y < 30 + 14)
+    if (mouse.x > height + 10 and mouse.y > 30 and mouse.x < (height + 10) + 57 and mouse.y < 30 + 14)
     {
       FillRect(height + 11, 31, 56, 13, olc::DARK_MAGENTA);
 
@@ -243,7 +243,7 @@ private:
     for (cell& cell : cells)
     {
       // On cell hover
-      if (cell.content == NOT_SET && mouse.x > cell.cellPosition.x && mouse.y > cell.cellPosition.y && mouse.x <= cell.cellPosition.x + oneThird && mouse.y <= cell.cellPosition.y + oneThird)
+      if (cell.content == NOT_SET and mouse.x > cell.cellPosition.x and mouse.y > cell.cellPosition.y and mouse.x <= cell.cellPosition.x + oneThird and mouse.y <= cell.cellPosition.y + oneThird)
       {
         DrawRect(cell.cellPosition.x + 1, cell.cellPosition.y + 1, oneThird - 1, oneThird - 1, olc::DARK_MAGENTA);
         DrawRect(cell.cellPosition.x + 2, cell.cellPosition.y + 2, oneThird - 3, oneThird - 3, olc::DARK_MAGENTA);
@@ -299,7 +299,7 @@ private:
   // If the player clicks the quit button, the program exist
   void HandleQuit()
   {
-    if (mouse.x > height + 10 && mouse.y > height - 19 && mouse.x < (height + 11) + 30 && mouse.y < (height - 19) + 14)
+    if (mouse.x > height + 10 and mouse.y > height - 19 and mouse.x < (height + 11) + 30 and mouse.y < (height - 19) + 14)
     {
       FillRect(height + 11, height - 18, 30, 13, olc::DARK_MAGENTA);
 
@@ -447,7 +447,7 @@ private:
     SetPixelMode(olc::Pixel::NORMAL);
 
     // Hover over circle
-    if (mouse.x > oneThird + spriteOffset && mouse.y > oneThird + (oneThird / 3) && mouse.x < (oneThird + spriteOffset) + 32 && mouse.y < (oneThird + (oneThird / 3)) + 32)
+    if (mouse.x > oneThird + spriteOffset and mouse.y > oneThird + (oneThird / 3) and mouse.x < (oneThird + spriteOffset) + 32 and mouse.y < (oneThird + (oneThird / 3)) + 32)
     {
       SetPixelMode(olc::Pixel::ALPHA);
       DrawSprite(oneThird + spriteOffset, oneThird + (oneThird / 3), circleHover);
@@ -468,7 +468,7 @@ private:
     }
 
     // Hover over cross
-    if (mouse.x > height - spriteOffset && mouse.y > oneThird + (oneThird / 3) && mouse.x < (height - spriteOffset) + 32 && mouse.y < (oneThird + (oneThird / 3)) + 32)
+    if (mouse.x > height - spriteOffset and mouse.y > oneThird + (oneThird / 3) and mouse.x < (height - spriteOffset) + 32 and mouse.y < (oneThird + (oneThird / 3)) + 32)
     {
       SetPixelMode(olc::Pixel::ALPHA);
       DrawSprite(height - spriteOffset, oneThird + (oneThird / 3), crossHover);
