@@ -31,6 +31,7 @@ struct cell
 
 struct winCondition
 {
+  // TODO: for PvP implement "Draw" state
   bool winCondition;
   turn who;
   olc::vi2d lineStart;
@@ -60,8 +61,6 @@ private:
   winCondition winCondition;
   cell cells [9];
 
-  olc::Pixel orange = olc::Pixel(255, 128, 0);
-
   // The field width/height is the same as the window height
   // Formula for height/distance relation: y = 6x + 94
 
@@ -74,6 +73,8 @@ public:
 public:
   bool OnUserCreate() override
   {
+    srand(time(nullptr));
+
     winCondition.winCondition = false;
 
     width = ScreenWidth();
@@ -141,7 +142,27 @@ public:
 
     if (turn == CPU)
     {
-      // TODO: implement AI here
+      // TODO: prevent the AI from filling half the field at once
+      // TODO: paint the UI correctly when the CPU won
+      std::vector<int> availablePositions;
+
+      // Determining all available cells that the AI can place place a sprite on
+      for (int i = 0; i < 9; i++)
+      {
+        // Ignore cells that are already occupied
+        if (cells[i].sprite != NOT_SET) continue;
+
+        availablePositions.push_back(i);
+      }
+
+      if (not availablePositions.empty())
+      {
+        // Placing the CPU's sprite on a randomly selected free cell
+        cells[rand() % availablePositions.size()].sprite = player2Sprite;
+      }
+
+      // After the CPU has placed a sprite it's the player's turn again
+      turn == PLAYER_1;
     }
 
     // As long as the win condition is not met, check it on each frame
@@ -237,20 +258,41 @@ private:
   // User can restart the game by clicking on the restart button
   void HandleRestart()
   {
-    if (mouse.x > height + 10 and mouse.y > 30 and mouse.x < (height + 10) + 57 and mouse.y < 30 + 14)
+    // if (mouse.x > height + 10 and mouse.y > 30 and mouse.x < (height + 10) + 57 and mouse.y < 30 + 14)
+    // {
+    //   FillRect(height + 11, 31, 56, 13, olc::DARK_MAGENTA);
+
+    //   if (GetMouse(0).bPressed)
+    //   {
+    //     for (cell& cell : cells)
+    //     {
+    //       cell.sprite = NOT_SET;
+    //     }
+
+    //     playerNeedsToChooseSprite = true;
+    //   }
+    // }
+
+    // TODO: implement this style of function code everywhere
+    // A different style of programming: ealry returns in functions instead of nested ifs; makes the code quite a bit cleaner
+    // On mouse hover, fill the rectangle with color to indicate hover
+    if (mouse.x < height + 10 or mouse.y < 30 or mouse.x > (height + 10) + 57 or mouse.y > 30 + 14) return;
+
+    FillRect(height + 11, 31, 56, 13, olc::DARK_MAGENTA);
+
+    // If the reset button has been clicked, reset the whole playing field and make the player choose a sprite
+    if (not GetMouse(0).bPressed) return;
+
+    // Resetting the playing field
+    for (cell& cell : cells)
     {
-      FillRect(height + 11, 31, 56, 13, olc::DARK_MAGENTA);
-
-      if (GetMouse(0).bPressed)
-      {
-        for (cell& cell : cells)
-        {
-          cell.sprite = NOT_SET;
-        }
-
-        playerNeedsToChooseSprite = true;
-      }
+      cell.sprite = NOT_SET;
     }
+
+    winCondition.lineStart = {-1, -1};
+    winCondition.lineEnd = {-1, -1};
+
+    playerNeedsToChooseSprite = true;
   }
 
   void HandleGridInput()
@@ -314,15 +356,15 @@ private:
   // If the player clicks the quit button, the program exist
   void HandleQuit()
   {
-    if (mouse.x > height + 10 and mouse.y > height - 19 and mouse.x < (height + 11) + 30 and mouse.y < (height - 19) + 14)
-    {
-      FillRect(height + 11, height - 18, 30, 13, olc::DARK_MAGENTA);
+    // Only proceed on mouse hover of the quit button
+    if (not (mouse.x > height + 10 and mouse.y > height - 19 and mouse.x < (height + 11) + 30 and mouse.y < (height - 19) + 14)) return;
 
-      if (GetMouse(0).bPressed)
-      {
-        quit = true;
-      }
-    }
+    FillRect(height + 11, height - 18, 30, 13, olc::DARK_MAGENTA);
+
+    // Only quit on button click
+    if (not GetMouse(0).bPressed) return;
+
+    quit = true;
   }
 
   void PaintPlayingField()
@@ -341,15 +383,14 @@ private:
     DrawRect(height + 10, 5, width - (height + 20), 14, olc::GREY);
     DrawLine(width - ((width - height) / 2), 6, width - ((width - height) / 2), 18, olc::GREY);
 
-    switch (mode)
+    // Filling in the respective button depending on the active mode
+    if (mode == PvE)
     {
-      case PvE:
-        FillRect(height + 11, 6, 28, 13, olc::DARK_CYAN);
-      break;
-
-      case PvP:
-        FillRect(height + 40, 6, 28, 13, olc::DARK_CYAN);
-      break;
+      FillRect(height + 11, 6, 28, 13, olc::DARK_CYAN);
+    }
+    else if (mode == PvP)
+    {
+      FillRect(height + 40, 6, 28, 13, olc::DARK_CYAN);
     }
 
     DrawStringProp(height + 14, 9, "PvE", (mode == PvE ? olc::WHITE : olc::GREY));
@@ -363,49 +404,47 @@ private:
     // On the respective player's turn the respective UI element is highlighted
     if (not winCondition.winCondition)
     {
-      switch (mode)
+      if (mode == PvE)
       {
-        case PvE:
-          // Player 1's turn
-          if (turn == PLAYER_1)
-          {
-            DrawRect(height + 10, 55, 56, 14);
-            FillRect(height + 11, 56, 55, 13, olc::DARK_CYAN);
-          }
-          DrawStringProp(height + 14, 59, "Pl. 1", (turn == PLAYER_1 ? olc::WHITE : olc::GREY));
-          DrawStringProp(height + 56, 59, (player1Sprite == CROSS ? "X" : "O"), (turn == PLAYER_1 ? olc::WHITE : olc::GREY));
+        // Player 1's turn
+        if (turn == PLAYER_1)
+        {
+          DrawRect(height + 10, 55, 56, 14);
+          FillRect(height + 11, 56, 55, 13, olc::DARK_CYAN);
+        }
+        DrawStringProp(height + 14, 59, "Pl. 1", (turn == PLAYER_1 ? olc::WHITE : olc::GREY));
+        DrawStringProp(height + 56, 59, (player1Sprite == CROSS ? "X" : "O"), (turn == PLAYER_1 ? olc::WHITE : olc::GREY));
 
-          // CPU's turn
-          if (turn == CPU)
-          {
-            DrawRect(height + 10, 80, 56, 14);
-            FillRect(height + 11, 81, 55, 13, olc::DARK_CYAN);
-          }
-          DrawStringProp(height + 14, 84, "CPU", (turn == CPU ? olc::WHITE : olc::GREY));
-          DrawStringProp(height + 56, 84, (player1Sprite == CROSS ? "O" : "X"), (turn == CPU ? olc::WHITE : olc::GREY));
+        // CPU's turn
+        if (turn == CPU)
+        {
+          DrawRect(height + 10, 80, 56, 14);
+          FillRect(height + 11, 81, 55, 13, olc::DARK_CYAN);
+        }
+        DrawStringProp(height + 14, 84, "CPU", (turn == CPU ? olc::WHITE : olc::GREY));
+        DrawStringProp(height + 56, 84, (player1Sprite == CROSS ? "O" : "X"), (turn == CPU ? olc::WHITE : olc::GREY));
 
-          // TODO: add dificlutly selector for "easy" (= random) and "hard" (= mercyless)
-        break;
+        // TODO: add dificlutly selector for "easy" (= random) and "hard" (= mercyless)
+      }
+      else if (mode == PvP)
+      {
+        // Player 1's turn
+        if (turn == PLAYER_1)
+        {
+          DrawRect(height + 10, 55, 56, 14);
+          FillRect(height + 11, 56, 55, 13, olc::DARK_CYAN);
+        }
+        DrawStringProp(height + 14, 59, "Pl. 1", (turn == PLAYER_1 ? olc::WHITE : olc::GREY));
+        DrawStringProp(height + 56, 59, (player1Sprite == CROSS ? "X" : "O"), (turn == PLAYER_1 ? olc::WHITE : olc::GREY));
 
-        case PvP:
-          // Player 1's turn
-          if (turn == PLAYER_1)
-          {
-            DrawRect(height + 10, 55, 56, 14);
-            FillRect(height + 11, 56, 55, 13, olc::DARK_CYAN);
-          }
-          DrawStringProp(height + 14, 59, "Pl. 1", (turn == PLAYER_1 ? olc::WHITE : olc::GREY));
-          DrawStringProp(height + 56, 59, (player1Sprite == CROSS ? "X" : "O"), (turn == PLAYER_1 ? olc::WHITE : olc::GREY));
-
-          // Player 2's turn
-          if (turn == PLAYER_2)
-          {
-            DrawRect(height + 10, 80, 56, 14);
-            FillRect(height + 11, 81, 55, 13, olc::DARK_CYAN);
-          }
-          DrawStringProp(height + 14, 84, "Pl. 2", (turn == PLAYER_2 ? olc::WHITE : olc::GREY));
-          DrawStringProp(height + 56, 84, (player2Sprite == CROSS ? "X" : "O"), (turn == PLAYER_2 ? olc::WHITE : olc::GREY));
-        break;
+        // Player 2's turn
+        if (turn == PLAYER_2)
+        {
+          DrawRect(height + 10, 80, 56, 14);
+          FillRect(height + 11, 81, 55, 13, olc::DARK_CYAN);
+        }
+        DrawStringProp(height + 14, 84, "Pl. 2", (turn == PLAYER_2 ? olc::WHITE : olc::GREY));
+        DrawStringProp(height + 56, 84, (player2Sprite == CROSS ? "X" : "O"), (turn == PLAYER_2 ? olc::WHITE : olc::GREY));
       }
     }
     // Win condition has been met, declare winner instead of painting UI
@@ -437,33 +476,28 @@ private:
   // Paints the circles and crosses at their respective positions
   void PaintSprites()
   {
-    // Drawing the crosses and circles
+    // Painting the crosses and circles
     SetPixelMode(olc::Pixel::ALPHA);
 
+    // Painting each sprite
     for (const cell& cell : cells)
     {
-      switch (cell.sprite)
+      if (cell.sprite == CROSS)
       {
-        case CROSS:
-          DrawSprite(cell.spritePosition, cross);
-        break;
-
-        case CIRCLE:
-          DrawSprite(cell.spritePosition, circle);
-        break;
-
-        default:
-        break;
+        DrawSprite(cell.spritePosition, cross);
+      }
+      else if (cell.sprite == CIRCLE)
+      {
+        DrawSprite(cell.spritePosition, circle);
       }
     }
 
     SetPixelMode(olc::Pixel::NORMAL);
 
-    // If the game has been won, paint an orange line over the winning position
-    if (winCondition.winCondition)
-    {
-      DrawLine(winCondition.lineStart.x, winCondition.lineStart.y, winCondition.lineEnd.x, winCondition.lineEnd.y, orange);
-    }
+    // If the game has been won, paint a dark magenta line over the winning position
+    if (not winCondition.winCondition) return;
+
+    DrawLine(winCondition.lineStart.x, winCondition.lineStart.y, winCondition.lineEnd.x, winCondition.lineEnd.y, olc::MAGENTA);
   }
 
   // Paints a pop-up dialogue, allowing the player to choose their preferred sprite
@@ -491,6 +525,7 @@ private:
     DrawSprite(height - spriteOffset, oneThird + (oneThird / 3), cross);
     SetPixelMode(olc::Pixel::NORMAL);
 
+    // TODO: refactor using ealry returns instead of if nesting
     // Hover over circle
     if (mouse.x > oneThird + spriteOffset and mouse.y > oneThird + (oneThird / 3) and mouse.x < (oneThird + spriteOffset) + 32 and mouse.y < (oneThird + (oneThird / 3)) + 32)
     {
@@ -512,6 +547,7 @@ private:
       }
     }
 
+    // TODO: refactor using ealry returns instead of if nesting
     // Hover over cross
     if (mouse.x > height - spriteOffset and mouse.y > oneThird + (oneThird / 3) and mouse.x < (height - spriteOffset) + 32 and mouse.y < (oneThird + (oneThird / 3)) + 32)
     {
@@ -599,9 +635,14 @@ private:
 
   bool CheckCellsForWin(int one, int two, int three)
   {
-    if ((cells[one].sprite == CROSS and cells[two].sprite == CROSS and cells[three].sprite == CROSS) or (cells[one].sprite == CIRCLE and cells[two].sprite == CIRCLE and cells[three].sprite == CIRCLE))
+    // If any of the three given grid positions have the same sprite
+    if (not ((cells[one].sprite == CROSS and cells[two].sprite == CROSS and cells[three].sprite == CROSS) or (cells[one].sprite == CIRCLE and cells[two].sprite == CIRCLE and cells[three].sprite == CIRCLE))) return false;
+
+    winCondition.winCondition = true;
+
+    // Deciding the winner based on who's turn it is right now
+    if (mode == PvP)
     {
-      winCondition.winCondition = true;
       if (turn == PLAYER_2 or turn == CPU)
       {
         winCondition.who = PLAYER_1;
@@ -610,11 +651,20 @@ private:
       {
         winCondition.who = PLAYER_2;
       }
-
-      return true;
+    }
+    else if (mode == PvE)
+    {
+      if (turn == PLAYER_1)
+      {
+        winCondition.who = CPU;
+      }
+      else if (turn == CPU)
+      {
+        winCondition.who = PLAYER_1;
+      }
     }
 
-    return false;
+    return true;
   }
 };
 
